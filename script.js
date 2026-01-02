@@ -321,28 +321,34 @@ function handleGenericLogo(e) {
     }
 }
 
-// Export/Import
-exportImportBtn.addEventListener('click', () => {
-    mainContent.innerHTML = `
-        <div class="invoice-form">
-            <h2>تصدير/استيراد</h2>
-            <button id="export-json">تصدير JSON</button>
-            <input type="file" id="import-json" accept=".json" style="display:none;">
-            <button id="import-btn">استيراد JSON</button>
-            <button id="export-pdf">تصدير آخر فاتورة PDF</button>
-            <button id="print-invoice">طباعة آخر فاتورة</button>
-            <button id="copy-text">نسخ نص آخر فاتورة</button>
-        </div>
-    `;
-    document.getElementById('export-json').addEventListener('click', exportJSON);
-    document.getElementById('import-btn').addEventListener('click', () => {
-        document.getElementById('import-json').click();
+// Export/Import (only if element exists)
+if (exportImportBtn) {
+    exportImportBtn.addEventListener('click', () => {
+        mainContent.innerHTML = `
+            <div class="invoice-form">
+                <h2>تصدير/استيراد</h2>
+                <button id="export-json">تصدير JSON</button>
+                <input type="file" id="import-json" accept=".json" style="display:none;">
+                <button id="import-btn">استيراد JSON</button>
+                <button id="export-pdf">تصدير آخر فاتورة PDF</button>
+                <button id="print-invoice">طباعة آخر فاتورة</button>
+                <button id="copy-text">نسخ نص آخر فاتورة</button>
+            </div>
+        `;
+        const exportBtn = document.getElementById('export-json');
+        const importBtn = document.getElementById('import-btn');
+        const importInput = document.getElementById('import-json');
+        const exportPdfBtn = document.getElementById('export-pdf');
+        const printBtn = document.getElementById('print-invoice');
+        const copyBtn = document.getElementById('copy-text');
+        if (exportBtn) exportBtn.addEventListener('click', exportJSON);
+        if (importBtn) importBtn.addEventListener('click', () => importInput && importInput.click());
+        if (importInput) importInput.addEventListener('change', importJSON);
+        if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportLastPDF);
+        if (printBtn) printBtn.addEventListener('click', printLastInvoice);
+        if (copyBtn) copyBtn.addEventListener('click', copyLastText);
     });
-    document.getElementById('import-json').addEventListener('change', importJSON);
-    document.getElementById('export-pdf').addEventListener('click', exportLastPDF);
-    document.getElementById('print-invoice').addEventListener('click', printLastInvoice);
-    document.getElementById('copy-text').addEventListener('click', copyLastText);
-});
+}
 
 // Export JSON
 function exportJSON() {
@@ -548,7 +554,7 @@ function generatePDFFromInvoice(invoice) {
             { text: `المتبقي: ${invoice.remaining}`, style: 'subheader', alignment: 'right' }
         ],
         defaultStyle: {
-            font: 'Arial',
+            font: 'Roboto',
             alignment: 'right',
             fontSize: 14
         },
