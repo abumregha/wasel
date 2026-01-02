@@ -161,16 +161,42 @@ function showInvoiceForm() {
             </table>
             <button type="button" id="add-item">إضافة عنصر</button>
             <div class="form-actions">
-                <button type="button" id="preview-pdf">معاينة</button>
-                <button type="submit">حفظ الفاتورة</button>
+                <button type="button" id="download-pdf">تنزيل PDF</button>
             </div>
         </form>
     `;
 
     // Add item functionality
     document.getElementById('add-item').addEventListener('click', addItem);
-    document.getElementById('invoice-form').addEventListener('submit', saveInvoice);
-    document.getElementById('preview-pdf').addEventListener('click', previewPDF);
+    // Download PDF instead of save/preview
+    const downloadBtn = document.getElementById('download-pdf');
+    if (downloadBtn) downloadBtn.addEventListener('click', () => {
+        // build invoice from form and download PDF
+        const invoice = {
+            id: generateInvoiceId(),
+            date: new Date().toISOString(),
+            type: document.getElementById('invoice-type').value,
+            client: {
+                name: document.getElementById('client-name').value,
+                phone: document.getElementById('client-phone').value,
+                address: document.getElementById('client-address').value,
+                email: document.getElementById('client-email').value
+            },
+            items: Array.from(document.querySelectorAll('.item-row')).map(row => ({
+                desc: row.querySelector('.item-desc').value,
+                price: parseFloat(row.querySelector('.item-price').value) || 0,
+                qty: parseFloat(row.querySelector('.item-qty').value) || 0,
+                total: parseFloat(row.querySelector('.item-total').textContent) || 0
+            })),
+            grandTotal: parseFloat(document.getElementById('grand-total').textContent),
+            paid: parseFloat(document.getElementById('paid').value) || 0,
+            remaining: parseFloat(document.getElementById('remaining').textContent),
+            theme: currentTheme,
+            companyName,
+            companyLogo
+        };
+        downloadPDFFromInvoice(invoice);
+    });
     document.getElementById('paid').addEventListener('input', updateRemaining);
     document.querySelectorAll('.remove-item').forEach(btn => btn.addEventListener('click', removeItem));
     document.getElementById('items-tbody').addEventListener('input', updateTotals);
@@ -521,16 +547,16 @@ function generatePDFFromInvoice(invoice) {
     ];
     invoice.items.forEach(item => {
         itemsTable.push([
-            item.desc,
-            item.price.toString(),
-            item.qty.toString(),
-            item.total.toString()
+            item.desc || '',
+            (item.price || 0).toString(),
+            (item.qty || 0).toString(),
+            (item.total || 0).toString()
         ]);
     });
 
     var docDefinition = {
         content: [
-            { text: invoice.companyName || 'شركة المدار', style: 'header', alignment: 'center', color: '#007bff' },
+            { text: invoice.companyName || 'شركة المدار', style: 'header', alignment: 'center' },
             { text: `نوع الفاتورة: ${invoice.type}`, style: 'subheader', alignment: 'right' },
             { text: `رقم الفاتورة: ${invoice.id}`, style: 'subheader', alignment: 'right' },
             { text: `التاريخ: ${new Date(invoice.date).toLocaleDateString('ar')}`, style: 'subheader', alignment: 'right' },
@@ -546,7 +572,6 @@ function generatePDFFromInvoice(invoice) {
                     body: itemsTable
                 },
                 layout: 'lightHorizontalLines',
-                alignment: 'center',
                 margin: [0, 5, 0, 5]
             },
             { text: `الإجمالي الكلي: ${invoice.grandTotal}`, style: 'subheader', alignment: 'right', margin: [0, 10, 0, 0] },
@@ -556,20 +581,21 @@ function generatePDFFromInvoice(invoice) {
         defaultStyle: {
             font: 'Roboto',
             alignment: 'right',
-            fontSize: 14
+            fontSize: 13
         },
         styles: {
             header: {
-                fontSize: 22,
+                fontSize: 20,
                 bold: true
             },
             subheader: {
-                fontSize: 16,
-                bold: false
+                fontSize: 14,
+                bold: false,
+                margin: [0, 5, 0, 5]
             },
             tableHeader: {
                 bold: true,
-                fontSize: 15,
+                fontSize: 13,
                 color: 'white',
                 fillColor: '#007bff',
                 alignment: 'center'
@@ -577,7 +603,89 @@ function generatePDFFromInvoice(invoice) {
         },
         pageDirection: 'rtl'
     };
-    pdfMake.createPdf(docDefinition).open();
+    try {
+        pdfMake.createPdf(docDefinition).open();
+    } catch (e) {
+        console.error('PDF generation error:', e);
+        alert('خطأ في إنشاء الفاتورة: ' + e.message);
+    }
+}
+
+// Download PDF from invoice object
+function downloadPDFFromInvoice(invoice) {
+    // build items table
+    const itemsTable = [
+        [
+            { text: 'اسم العنصر', style: 'tableHeader' },
+            { text: 'السعر', style: 'tableHeader' },
+            { text: 'الكمية', style: 'tableHeader' },
+            { text: 'الإجمالي', style: 'tableHeader' }
+        ]
+    ];
+    invoice.items.forEach(item => {
+        itemsTable.push([
+            item.desc || '',
+            (item.price || 0).toString(),
+            (item.qty || 0).toString(),
+            (item.total || 0).toString()
+        ]);
+    });
+
+    var docDefinition = {
+        content: [
+            { text: invoice.companyName || 'شركة المدار', style: 'header', alignment: 'center' },
+            { text: `نوع الفاتورة: ${invoice.type}`, style: 'subheader', alignment: 'right' },
+            { text: `رقم الفاتورة: ${invoice.id}`, style: 'subheader', alignment: 'right' },
+            { text: `التاريخ: ${new Date(invoice.date).toLocaleDateString('ar')}`, style: 'subheader', alignment: 'right' },
+            { text: `العميل: ${invoice.client.name}`, style: 'subheader', alignment: 'right' },
+            { text: `الهاتف: ${invoice.client.phone}`, style: 'subheader', alignment: 'right' },
+            { text: `العنوان: ${invoice.client.address}`, style: 'subheader', alignment: 'right' },
+            { text: `البريد: ${invoice.client.email}`, style: 'subheader', alignment: 'right' },
+            { text: 'العناصر:', style: 'subheader', alignment: 'right', margin: [0, 10, 0, 0] },
+            {
+                table: {
+                    headerRows: 1,
+                    widths: ['*', 'auto', 'auto', 'auto'],
+                    body: itemsTable
+                },
+                layout: 'lightHorizontalLines',
+                margin: [0, 5, 0, 5]
+            },
+            { text: `الإجمالي الكلي: ${invoice.grandTotal}`, style: 'subheader', alignment: 'right', margin: [0, 10, 0, 0] },
+            { text: `المدفوع: ${invoice.paid}`, style: 'subheader', alignment: 'right' },
+            { text: `المتبقي: ${invoice.remaining}`, style: 'subheader', alignment: 'right' }
+        ],
+        defaultStyle: {
+            font: 'Roboto',
+            alignment: 'right',
+            fontSize: 13
+        },
+        styles: {
+            header: {
+                fontSize: 20,
+                bold: true
+            },
+            subheader: {
+                fontSize: 14,
+                bold: false,
+                margin: [0, 5, 0, 5]
+            },
+            tableHeader: {
+                bold: true,
+                fontSize: 13,
+                color: 'white',
+                fillColor: '#007bff',
+                alignment: 'center'
+            }
+        },
+        pageDirection: 'rtl'
+    };
+    try {
+        pdfMake.createPdf(docDefinition).download(`invoice-${invoice.id}.pdf`);
+    } catch (e) {
+        console.error('PDF generation error:', e);
+        alert('خطأ في إنشاء الفاتورة: ' + e.message);
+    }
 }
 
 // Register Service Worker
