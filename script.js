@@ -503,83 +503,80 @@ function downloadPDFFromInvoice(invoice) {
     `;
     invoice.items.forEach(item => {
         itemsHtml += `
-            <tr>
-                <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${item.desc || ''}</td>
-                <td style="text-align: center; padding: 8px; border: 1px solid #ddd;">${(item.price || 0).toFixed(2)}</td>
-                <td style="text-align: center; padding: 8px; border: 1px solid #ddd;">${(item.qty || 0)}</td>
-                <td style="text-align: center; padding: 8px; border: 1px solid #ddd;">${(item.total || 0).toFixed(2)}</td>
-            </tr>
-        `;
+
+// Generate PDF from saved invoice (Preview)
+function generatePDFFromInvoice(invoice) {
+    const printWindow = window.open('', '', 'height=600,width=800');
+    let itemsHtml = ``;
+    invoice.items.forEach(item => {
+        itemsHtml += `<tr>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">${item.desc || ''}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${(item.price || 0).toFixed(2)}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${(item.qty || 0)}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${(item.total || 0).toFixed(2)}</td>
+        </tr>`;
     });
+
+    const printContent = `<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>body{font-family:'Noto Sans Arabic',Arial,sans-serif;direction:rtl;padding:20px;background:#fff}h1{text-align:center;margin-bottom:20px;color:#007bff;font-size:28px}p{margin:8px 0;font-size:14px;text-align:right}h3{text-align:right;margin:15px 0 10px 0;font-size:18px}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#007bff;color:#fff;padding:10px;border:1px solid #000;text-align:center;font-size:14px}td{border:1px solid #000;padding:8px}.summary{margin-top:20px}.summary-total{font-size:16px;font-weight:bold;margin-top:10px}@media print{body{padding:0}}</style></head>
+<body><h1>${invoice.companyName || 'شركة المدار'}</h1>
+<p><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
+<p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
+<p><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
+<p><strong>العميل:</strong> ${invoice.client.name}</p>
+<p><strong>الهاتف:</strong> ${invoice.client.phone}</p>
+<p><strong>العنوان:</strong> ${invoice.client.address}</p>
+<p><strong>البريد:</strong> ${invoice.client.email}</p>
+<h3>العناصر</h3>
+<table><thead><tr><th>اسم العنصر</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead>
+<tbody>${itemsHtml}</tbody></table>
+<div class="summary"><p class="summary-total"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
+<p><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
+<p><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p></div>
+<script>window.print();</script></body></html>`;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+}
 
 // Download PDF from invoice object
 function downloadPDFFromInvoice(invoice) {
-    // Create HTML content for PDF
-    let itemsHtml = `
-        <tr>
-            <td style="text-align: center; padding: 8px; border: 1px solid #ddd;"><strong>اسم العنصر</strong></td>
-            <td style="text-align: center; padding: 8px; border: 1px solid #ddd;"><strong>السعر</strong></td>
-            <td style="text-align: center; padding: 8px; border: 1px solid #ddd;"><strong>الكمية</strong></td>
-            <td style="text-align: center; padding: 8px; border: 1px solid #ddd;"><strong>الإجمالي</strong></td>
-        </tr>
-    `;
+    let itemsHtml = ``;
     invoice.items.forEach(item => {
-        itemsHtml += `
-            <tr>
-                <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${item.desc || ''}</td>
-                <td style="text-align: center; padding: 8px; border: 1px solid #ddd;">${(item.price || 0).toFixed(2)}</td>
-                <td style="text-align: center; padding: 8px; border: 1px solid #ddd;">${(item.qty || 0)}</td>
-                <td style="text-align: center; padding: 8px; border: 1px solid #ddd;">${(item.total || 0).toFixed(2)}</td>
-            </tr>
-        `;
+        itemsHtml += `<tr>
+            <td style="border:1px solid #000;padding:8px;text-align:right;">${item.desc || ''}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:center;">${(item.price || 0).toFixed(2)}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:center;">${(item.qty || 0)}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:center;">${(item.total || 0).toFixed(2)}</td>
+        </tr>`;
     });
 
-    // Create element and add to DOM
-    const element = document.createElement('div');
-    element.style.position = 'absolute';
-    element.style.left = '-9999px';
-    element.style.top = '-9999px';
-    element.innerHTML = `
-        <div style="direction: rtl; font-family: 'Noto Sans Arabic', Arial, sans-serif; padding: 20px; background: white; color: black;">
-            <h1 style="text-align: center; color: #007bff; margin: 0 0 20px 0; font-size: 24px;">${invoice.companyName || 'شركة المدار'}</h1>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>العميل:</strong> ${invoice.client.name}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>الهاتف:</strong> ${invoice.client.phone}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>العنوان:</strong> ${invoice.client.address}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>البريد:</strong> ${invoice.client.email}</p>
-            <h3 style="text-align: right; margin: 15px 0 10px 0; font-size: 16px;">العناصر</h3>
-            <table style="width: 100%; border-collapse: collapse; margin: 10px 0 20px 0; font-size: 13px;">
-                ${itemsHtml}
-            </table>
-            <p style="text-align: right; margin: 8px 0; font-size: 16px;"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
-            <p style="text-align: right; margin: 8px 0; font-size: 14px;"><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p>
-        </div>
-    `;
-    document.body.appendChild(element);
-    
-    const opt = {
-        margin: 10,
-        filename: `invoice-${invoice.id}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, logging: false, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' },
-        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
-    };
+    const htmlString = `<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>body{font-family:'Noto Sans Arabic',Arial,sans-serif;direction:rtl;padding:20px;background:#fff;color:#000}h1{text-align:center;margin-bottom:20px;color:#007bff;font-size:28px}p{margin:8px 0;font-size:14px;text-align:right}h3{text-align:right;margin:15px 0 10px 0;font-size:18px}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#007bff;color:#fff;padding:10px;border:1px solid #000;text-align:center;font-size:14px}td{border:1px solid #000;padding:8px}.summary{margin-top:20px}.summary-total{font-size:16px;font-weight:bold}</style></head>
+<body><h1>${invoice.companyName || 'شركة المدار'}</h1>
+<p><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
+<p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
+<p><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
+<p><strong>العميل:</strong> ${invoice.client.name}</p>
+<p><strong>الهاتف:</strong> ${invoice.client.phone}</p>
+<p><strong>العنوان:</strong> ${invoice.client.address}</p>
+<p><strong>البريد:</strong> ${invoice.client.email}</p>
+<h3>العناصر</h3>
+<table><thead><tr><th>اسم العنصر</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead>
+<tbody>${itemsHtml}</tbody></table>
+<div class="summary"><p class="summary-total"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
+<p><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
+<p><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p></div></body></html>`;
     
     try {
-        html2pdf().set(opt).from(element).save().then(() => {
-            document.body.removeChild(element);
-        }).catch(err => {
-            document.body.removeChild(element);
-            console.error('PDF download error:', err);
-            alert('خطأ في تنزيل الفاتورة: ' + err.message);
-        });
+        const opt = {margin:10,filename:`invoice-${invoice.id}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,logging:false,useCORS:true,allowTaint:true,backgroundColor:'#ffffff'},jsPDF:{orientation:'portrait',unit:'mm',format:'a4'}};
+        html2pdf().set(opt).from(htmlString).save();
     } catch (e) {
-        document.body.removeChild(element);
-        console.error('PDF download error:', e);
-        alert('خطأ في تنزيل الفاتورة: ' + e.message);
+        alert('خطأ: ' + e.message);
     }
 }
 
