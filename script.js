@@ -45,6 +45,12 @@ langToggle.addEventListener('click', () => {
     updateTexts();
 });
 
+// Apply theme
+function applyTheme(theme) {
+    document.body.className = `theme-${theme}`;
+    localStorage.setItem('theme', theme);
+}
+
 // Update company header
 function updateCompanyHeader() {
     if (companyName) {
@@ -322,17 +328,21 @@ exportImportBtn.addEventListener('click', () => {
         <div class="invoice-form">
             <h2>تصدير/استيراد</h2>
             <button id="export-json">تصدير JSON</button>
-            <input type="file" id="import-json" accept=".json">
-            <button id="export-pdf">تصدير PDF للفاتورة الأخيرة</button>
-            <button id="print-invoice">طباعة الفاتورة</button>
-            <button id="copy-text">نسخ نص الفاتورة</button>
+            <input type="file" id="import-json" accept=".json" style="display:none;">
+            <button id="import-btn">استيراد JSON</button>
+            <button id="export-pdf">تصدير آخر فاتورة PDF</button>
+            <button id="print-invoice">طباعة آخر فاتورة</button>
+            <button id="copy-text">نسخ نص آخر فاتورة</button>
         </div>
     `;
     document.getElementById('export-json').addEventListener('click', exportJSON);
+    document.getElementById('import-btn').addEventListener('click', () => {
+        document.getElementById('import-json').click();
+    });
     document.getElementById('import-json').addEventListener('change', importJSON);
-    document.getElementById('export-pdf').addEventListener('click', exportPDF);
-    document.getElementById('print-invoice').addEventListener('click', printInvoice);
-    document.getElementById('copy-text').addEventListener('click', copyText);
+    document.getElementById('export-pdf').addEventListener('click', exportLastPDF);
+    document.getElementById('print-invoice').addEventListener('click', printLastInvoice);
+    document.getElementById('copy-text').addEventListener('click', copyLastText);
 });
 
 // Export JSON
@@ -443,7 +453,32 @@ function previewPDF() {
         alert('الرجاء إدخال اسم العميل');
         return;
     }
-    exportPDF();
+    
+    // Create temporary invoice object from form
+    const invoice = {
+        id: generateInvoiceId(),
+        date: new Date().toISOString(),
+        type: document.getElementById('invoice-type').value,
+        client: {
+            name: document.getElementById('client-name').value,
+            phone: document.getElementById('client-phone').value,
+            address: document.getElementById('client-address').value,
+            email: document.getElementById('client-email').value
+        },
+        items: Array.from(document.querySelectorAll('.item-row')).map(row => ({
+            desc: row.querySelector('.item-desc').value,
+            price: parseFloat(row.querySelector('.item-price').value) || 0,
+            qty: parseFloat(row.querySelector('.item-qty').value) || 0,
+            total: parseFloat(row.querySelector('.item-total').textContent) || 0
+        })),
+        grandTotal: parseFloat(document.getElementById('grand-total').textContent),
+        paid: parseFloat(document.getElementById('paid').value) || 0,
+        remaining: parseFloat(document.getElementById('remaining').textContent),
+        theme: currentTheme,
+        companyName,
+        companyLogo
+    };
+    generatePDFFromInvoice(invoice);
 }
 
 // Export/Import
@@ -471,6 +506,19 @@ function showExportImport() {
     document.getElementById('export-pdf').addEventListener('click', exportLastPDF);
     document.getElementById('print-invoice').addEventListener('click', printLastInvoice);
     document.getElementById('copy-text').addEventListener('click', copyLastText);
+}
+
+// Export last invoice as PDF
+function exportLastPDF() {
+    if (invoices.length === 0) return alert('لا توجد فواتير');
+    const invoice = invoices[invoices.length - 1];
+    generatePDFFromInvoice(invoice);
+}
+
+// Print last invoice
+function printLastInvoice() {
+    if (invoices.length === 0) return alert('لا توجد فواتير');
+    window.print();
 }
 
 // Export last invoice as PDF
