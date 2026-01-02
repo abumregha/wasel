@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مولد الفواتير - Invoice Generator</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header id="company-header" style="display:none;">
+        <div id="company-logo-display"></div>
+        <h1 id="company-name-display"></h1>
+    </header>
+    <nav>
+        <button id="customize-company">تخصيص الشركة</button>
+        <button id="new-invoice">فاتورة جديدة</button>
+        <button id="export-import">تصدير/استيراد</button>
+        <button id="lang-toggle">English</button>
+    </nav>
+    <main id="main-content">
+        <!-- Invoice form will be here -->
+    </main>
+    <canvas id="barcode" style="display:none;"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
