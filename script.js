@@ -161,6 +161,7 @@ function showInvoiceForm() {
             </table>
             <button type="button" id="add-item">إضافة عنصر</button>
             <div class="form-actions">
+                <button type="button" id="preview-pdf">معاينة</button>
                 <button type="button" id="download-pdf">تنزيل PDF</button>
             </div>
         </form>
@@ -168,11 +169,10 @@ function showInvoiceForm() {
 
     // Add item functionality
     document.getElementById('add-item').addEventListener('click', addItem);
-    // Download PDF instead of save/preview
-    const downloadBtn = document.getElementById('download-pdf');
-    if (downloadBtn) downloadBtn.addEventListener('click', () => {
-        // build invoice from form and download PDF
-        const invoice = {
+    
+    // Build invoice object function
+    function buildInvoice() {
+        return {
             id: generateInvoiceId(),
             date: new Date().toISOString(),
             type: document.getElementById('invoice-type').value,
@@ -195,8 +195,22 @@ function showInvoiceForm() {
             companyName,
             companyLogo
         };
+    }
+    
+    // Preview button
+    const previewBtn = document.getElementById('preview-pdf');
+    if (previewBtn) previewBtn.addEventListener('click', () => {
+        const invoice = buildInvoice();
+        generatePDFFromInvoice(invoice);
+    });
+    
+    // Download PDF button
+    const downloadBtn = document.getElementById('download-pdf');
+    if (downloadBtn) downloadBtn.addEventListener('click', () => {
+        const invoice = buildInvoice();
         downloadPDFFromInvoice(invoice);
     });
+    
     document.getElementById('paid').addEventListener('input', updateRemaining);
     document.querySelectorAll('.remove-item').forEach(btn => btn.addEventListener('click', removeItem));
     document.getElementById('items-tbody').addEventListener('input', updateTotals);
@@ -534,7 +548,7 @@ function copyLastText() {
     alert('تم نسخ نص الفاتورة');
 }
 
-// Generate PDF from saved invoice
+// Generate PDF from saved invoice (Preview)
 function generatePDFFromInvoice(invoice) {
     // Create HTML content for PDF
     let itemsHtml = `
@@ -556,40 +570,58 @@ function generatePDFFromInvoice(invoice) {
         `;
     });
 
-    const element = document.createElement('div');
-    element.innerHTML = `
-        <div style="direction: rtl; font-family: 'Noto Sans Arabic', sans-serif; padding: 20px;">
-            <h1 style="text-align: center; color: #007bff; margin: 0 0 20px 0;">${invoice.companyName || 'شركة المدار'}</h1>
-            <p style="text-align: right; margin: 5px 0;"><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>العميل:</strong> ${invoice.client.name}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>الهاتف:</strong> ${invoice.client.phone}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>العنوان:</strong> ${invoice.client.address}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>البريد:</strong> ${invoice.client.email}</p>
-            <h3 style="text-align: right; margin: 15px 0 10px 0;">العناصر</h3>
-            <table style="width: 100%; border-collapse: collapse; margin: 10px 0 20px 0;">
-                ${itemsHtml}
-            </table>
-            <p style="text-align: right; margin: 5px 0; font-size: 18px;"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p>
-        </div>
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: 'Noto Sans Arabic', Arial, sans-serif; padding: 20px; }
+                .invoice { direction: rtl; }
+                h1 { text-align: center; color: #007bff; margin: 0 0 20px 0; }
+                p { text-align: right; margin: 5px 0; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0 20px 0; }
+                td { padding: 8px; border: 1px solid #ddd; }
+                strong { font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="invoice">
+                <h1>${invoice.companyName || 'شركة المدار'}</h1>
+                <p><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
+                <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
+                <p><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
+                <p><strong>العميل:</strong> ${invoice.client.name}</p>
+                <p><strong>الهاتف:</strong> ${invoice.client.phone}</p>
+                <p><strong>العنوان:</strong> ${invoice.client.address}</p>
+                <p><strong>البريد:</strong> ${invoice.client.email}</p>
+                <h3 style="text-align: right; margin: 15px 0 10px 0;">العناصر</h3>
+                <table>
+                    ${itemsHtml}
+                </table>
+                <p style="font-size: 18px;"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
+                <p><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
+                <p><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p>
+            </div>
+        </body>
+        </html>
     `;
     
     const opt = {
-        margin: 10,
+        margin: [10, 10, 10, 10],
         filename: `invoice-${invoice.id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, logging: false, useCORS: true, allowTaint: true },
         jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
     };
     
     try {
-        html2pdf().set(opt).from(element).save();
+        html2pdf().set(opt).from(htmlContent).output('dataurlstring').then(pdfUrl => {
+            window.open(pdfUrl);
+        });
     } catch (e) {
-        console.error('PDF generation error:', e);
-        alert('خطأ في إنشاء الفاتورة: ' + e.message);
+        console.error('PDF preview error:', e);
+        alert('خطأ في معاينة الفاتورة: ' + e.message);
     }
 }
 
@@ -617,38 +649,55 @@ function downloadPDFFromInvoice(invoice) {
 
     const element = document.createElement('div');
     element.innerHTML = `
-        <div style="direction: rtl; font-family: 'Noto Sans Arabic', sans-serif; padding: 20px;">
-            <h1 style="text-align: center; color: #007bff; margin: 0 0 20px 0;">${invoice.companyName || 'شركة المدار'}</h1>
-            <p style="text-align: right; margin: 5px 0;"><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>العميل:</strong> ${invoice.client.name}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>الهاتف:</strong> ${invoice.client.phone}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>العنوان:</strong> ${invoice.client.address}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>البريد:</strong> ${invoice.client.email}</p>
-            <h3 style="text-align: right; margin: 15px 0 10px 0;">العناصر</h3>
-            <table style="width: 100%; border-collapse: collapse; margin: 10px 0 20px 0;">
-                ${itemsHtml}
-            </table>
-            <p style="text-align: right; margin: 5px 0; font-size: 18px;"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
-            <p style="text-align: right; margin: 5px 0;"><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p>
-        </div>
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: 'Noto Sans Arabic', Arial, sans-serif; padding: 20px; }
+                .invoice { direction: rtl; }
+                h1 { text-align: center; color: #007bff; margin: 0 0 20px 0; }
+                p { text-align: right; margin: 5px 0; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0 20px 0; }
+                td { padding: 8px; border: 1px solid #ddd; }
+                strong { font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="invoice">
+                <h1>${invoice.companyName || 'شركة المدار'}</h1>
+                <p><strong>نوع الفاتورة:</strong> ${invoice.type}</p>
+                <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
+                <p><strong>التاريخ:</strong> ${new Date(invoice.date).toLocaleDateString('ar')}</p>
+                <p><strong>العميل:</strong> ${invoice.client.name}</p>
+                <p><strong>الهاتف:</strong> ${invoice.client.phone}</p>
+                <p><strong>العنوان:</strong> ${invoice.client.address}</p>
+                <p><strong>البريد:</strong> ${invoice.client.email}</p>
+                <h3 style="text-align: right; margin: 15px 0 10px 0;">العناصر</h3>
+                <table>
+                    ${itemsHtml}
+                </table>
+                <p style="font-size: 18px;"><strong>الإجمالي الكلي:</strong> ${invoice.grandTotal.toFixed(2)}</p>
+                <p><strong>المدفوع:</strong> ${invoice.paid.toFixed(2)}</p>
+                <p><strong>المتبقي:</strong> ${invoice.remaining.toFixed(2)}</p>
+            </div>
+        </body>
+        </html>
     `;
     
     const opt = {
-        margin: 10,
+        margin: [10, 10, 10, 10],
         filename: `invoice-${invoice.id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, logging: false, useCORS: true, allowTaint: true },
         jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
     };
     
     try {
         html2pdf().set(opt).from(element).save();
     } catch (e) {
-        console.error('PDF generation error:', e);
-        alert('خطأ في إنشاء الفاتورة: ' + e.message);
+        console.error('PDF download error:', e);
+        alert('خطأ في تنزيل الفاتورة: ' + e.message);
     }
 }
 
