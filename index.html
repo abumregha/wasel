@@ -3,27 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مولد الفواتير - Invoice Generator</title>
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Invoice Expert | مولد الفواتير</title>
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkludm9pY2UgRXhwZXJ0IiwKICAic2hvcnRfbmFtZSI6ICJJbnZvaWNlIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmOGZhZmMiLAogICJ0aGVtZV9jb2xvciI6ICIjMjU2M2ViIgp9">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #2563eb; --accent: #1e40af; }
+        * { box-sizing: border-box; font-family: 'Noto Sans Arabic', sans-serif; }
+        body { background: #f1f5f9; margin: 0; padding: 10px; color: #1e293b; }
+        
+        /* Layout */
+        .app-container { max-width: 850px; margin: 20px auto; background: white; padding: 40px; border-radius: 8px; shadow: 0 10px 15px -3px rgba(0,0,0,0.1); position: relative; }
+        
+        /* Toolbar */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+        .theme-dots { display: flex; gap: 8px; }
+        .dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+        
+        /* Header Section */
+        .invoice-header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .company-info input { font-size: 24px; font-weight: bold; border: none; outline: none; width: 100%; color: var(--primary); }
+        .logo-box { width: 120px; height: 120px; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+        .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        /* Client Grid */
+        .client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .field-group { display: flex; flex-direction: column; }
+        .field-group label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+        input[type="text"], input[type="number"], input[type="date"], select { padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; outline-color: var(--primary); }
+
+        /* Table Style */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: var(--primary); color: white; padding: 12px; text-align: start; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 10px; }
+        .col-item { width: 50%; }
+        .col-total { font-weight: bold; color: var(--primary); }
+
+        /* Totals */
+        .summary { margin-top: 30px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .total-row { display: flex; gap: 50px; font-size: 18px; }
+        .grand-total { font-size: 24px; font-weight: bold; color: var(--primary); border-top: 2px solid var(--primary); padding-top: 5px; }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-add { background: #f1f5f9; color: var(--primary); margin-top: 10px; }
+        .btn-print { background: var(--primary); color: white; }
+        .btn-lang { background: #334155; color: white; }
+
+        /* Barcode Placeholder */
+        .barcode { font-family: 'Libre Barcode 39', cursive; font-size: 40px; margin-top: 20px; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .app-container { box-shadow: none; margin: 0; width: 100%; max-width: 100%; }
+            input { border: none !important; padding: 0 !important; }
+        }
+
+        /* LTR Support */
+        [dir="ltr"] .invoice-header, [dir="ltr"] .client-grid, [dir="ltr"] .summary { text-align: left; }
+    </style>
 </head>
 <body>
-    <header id="company-header" style="display:none;">
-        <div id="company-logo-display"></div>
-        <h1 id="company-name-display"></h1>
-    </header>
-    <nav>
-        <button id="customize-company">تخصيص الشركة</button>
-        <button id="new-invoice">فاتورة جديدة</button>
-        <button id="lang-toggle">English</button>
-    </nav>
-    <main id="main-content">
-        <!-- Invoice form will be here -->
-    </main>
-    <canvas id="barcode" style="display:none;"></canvas>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="script.js"></script>
+
+<div class="app-container">
+    <div class="toolbar no-print">
+        <div class="theme-dots">
+            <div class="dot" style="background: #2563eb;" onclick="setTheme('#2563eb')"></div>
+            <div class="dot" style="background: #10b981;" onclick="setTheme('#10b981')"></div>
+            <div class="dot" style="background: #ef4444;" onclick="setTheme('#ef4444')"></div>
+            <div class="dot" style="background: #f59e0b;" onclick="setTheme('#f59e0b')"></div>
+            <div class="dot" style="background: #8b5cf6;" onclick="setTheme('#8b5cf6')"></div>
+            <div class="dot" style="background: #000000;" onclick="setTheme('#000000')"></div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-lang" onclick="toggleLang()" id="langBtn">English</button>
+            <button class="btn btn-print" onclick="window.print()"><span id="txt-print">طباعة PDF</span></button>
+        </div>
+    </div>
+
+    <div class="invoice-header">
+        <div class="company-info">
+            <input type="text" id="compName" value="اسم شركتك هنا" placeholder="Company Name">
+            <p id="invIdDisplay" style="margin: 5px 0; color: #64748b; font-family: monospace;"></p>
+            <select id="invType" style="margin-top: 10px; border: none; font-weight: bold; background: transparent;">
+                <option value="فاتورة نهائية">فاتورة نهائية / Final Invoice</option>
+                <option value="عرض سعر">عرض سعر / Proforma</option>
+            </select>
+        </div>
+        <div class="logo-box" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" hidden accept="image/*" onchange="previewLogo(this)">
+            <img id="logoImg" src="" style="display: none;">
+            <span id="logoPlaceholder" class="no-print">رفع الشعار</span>
+        </div>
+    </div>
+
+    <div class="client-grid">
+        <div class="field-group">
+            <label id="lbl-client">بيانات العميل</label>
+            <input type="text" placeholder="الاسم" id="clientName">
+            <input type="text" placeholder="العنوان / الهاتف" style="margin-top: 5px;" id="clientContact">
+        </div>
+        <div class="field-group">
+            <label id="lbl-date">التاريخ</label>
+            <input type="date" id="invDate">
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th id="th-item" class="col-item">العنصر</th>
+                <th id="th-price">السعر</th>
+                <th id="th-qty">الكمية</th>
+                <th id="th-total">الإجمالي</th>
+            </tr>
+        </thead>
+        <tbody id="itemsBody">
+            </tbody>
+    </table>
+    <button class="btn btn-add no-print" onclick="addRow()" id="btn-addRow">+ إضافة عنصر</button>
+
+    <div class="summary">
+        <div class="total-row">
+            <span id="lbl-subtotal">المجموع:</span>
+            <span id="subTotal">0.00</span>
+        </div>
+        <div class="total-row">
+            <span id="lbl-paid">المدفوع:</span>
+            <input type="number" id="paidAmount" value="0" oninput="calculateTotals()" style="width: 100px; text-align: center;">
+        </div>
+        <div class="total-row grand-total">
+            <span id="lbl-grand">المتبقي:</span>
+            <span id="grandTotal">0.00</span>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; text-align: center;">
+        <div id="barcodeDisplay" style="font-size: 10px; color: #94a3b8;"></div>
+        <p style="font-size: 12px; color: #64748b;" id="footer-msg">شكراً لتعاملكم معنا</p>
+    </div>
+</div>
+
+<script>
+    let currentLang = 'ar';
+    const translations = {
+        ar: { print: "طباعة PDF", item: "العنصر", price: "السعر", qty: "الكمية", total: "الإجمالي", add: "+ إضافة عنصر", client: "بيانات العميل", date: "التاريخ", sub: "المجموع:", paid: "المدفوع:", grand: "المتبقي:", footer: "شكراً لتعاملكم معنا" },
+        en: { print: "Print PDF", item: "Item Description", price: "Price", qty: "Qty", total: "Total", add: "+ Add Item", client: "Client Details", date: "Date", sub: "Subtotal:", paid: "Paid:", grand: "Balance:", footer: "Thank you for your business" }
+    };
+
+    // Initialize
+    window.onload = () => {
+        generateID();
+        document.getElementById('invDate').valueAsDate = new Date();
+        addRow();
+        loadSavedData();
+        
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            const sw = `const cacheName='inv-v1'; self.addEventListener('install',e=>e.waitUntil(caches.open(cacheName).then(c=>c.add(location.href)))); self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
+            const blob = new Blob([sw], {type: 'text/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob));
+        }
+    };
+
+    function generateID() {
+        const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const id = `${date}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+        document.getElementById('invIdDisplay').innerText = id;
+        document.getElementById('barcodeDisplay').innerText = "*" + id + "*";
+    }
+
+    function addRow() {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" class="item-name" placeholder="..."></td>
+            <td><input type="number" class="item-price" value="0" oninput="calculateTotals()"></td>
+            <td><input type="number" class="item-qty" value="1" oninput="calculateTotals()"></td>
+            <td class="col-total">0.00</td>
+            <td class="no-print"><button onclick="this.parentElement.parentElement.remove();calculateTotals()" style="color:red; border:none; background:none; cursor:pointer;">&times;</button></td>
+        `;
+        document.getElementById('itemsBody').appendChild(tr);
+    }
+
+    function calculateTotals() {
+        let sub = 0;
+        document.querySelectorAll('#itemsBody tr').forEach(row => {
+            const p = parseFloat(row.querySelector('.item-price').value) || 0;
+            const q = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const t = p * q;
+            row.querySelector('.col-total').innerText = t.toFixed(2);
+            sub += t;
+        });
+        const paid = parseFloat(document.getElementById('paidAmount').value) || 0;
+        document.getElementById('subTotal').innerText = sub.toFixed(2);
+        document.getElementById('grandTotal').innerText = (sub - paid).toFixed(2);
+        saveToLocal();
+    }
+
+    function setTheme(color) {
+        document.documentElement.style.setProperty('--primary', color);
+        localStorage.setItem('inv-theme', color);
+    }
+
+    function toggleLang() {
+        currentLang = currentLang === 'ar' ? 'en' : 'ar';
+        const d = document.documentElement;
+        d.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+        d.lang = currentLang;
+        
+        const t = translations[currentLang];
+        document.getElementById('txt-print').innerText = t.print;
+        document.getElementById('th-item').innerText = t.item;
+        document.getElementById('th-price').innerText = t.price;
+        document.getElementById('th-qty').innerText = t.qty;
+        document.getElementById('th-total').innerText = t.total;
+        document.getElementById('btn-addRow').innerText = t.add;
+        document.getElementById('lbl-client').innerText = t.client;
+        document.getElementById('lbl-date').innerText = t.date;
+        document.getElementById('lbl-subtotal').innerText = t.sub;
+        document.getElementById('lbl-paid').innerText = t.paid;
+        document.getElementById('lbl-grand').innerText = t.grand;
+        document.getElementById('footer-msg').innerText = t.footer;
+        document.getElementById('langBtn').innerText = currentLang === 'ar' ? 'English' : 'عربي';
+    }
+
+    function previewLogo(input) {
+        if (input.files && input.files[0]) {
+            if (input.files[0].size > 500000) { alert("File too large (>500KB)"); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('logoImg').src = e.target.result;
+                document.getElementById('logoImg').style.display = 'block';
+                document.getElementById('logoPlaceholder').style.display = 'none';
+                localStorage.setItem('inv-logo', e.target.result);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function saveToLocal() {
+        const data = {
+            compName: document.getElementById('compName').value,
+            theme: getComputedStyle(document.documentElement).getPropertyValue('--primary')
+        };
+        localStorage.setItem('inv-settings', JSON.stringify(data));
+    }
+
+    function loadSavedData() {
+        const settings = JSON.parse(localStorage.getItem('inv-settings'));
+        if (settings) {
+            document.getElementById('compName').value = settings.compName;
+            setTheme(settings.theme);
+        }
+        const savedLogo = localStorage.getItem('inv-logo');
+        if (savedLogo) {
+            document.getElementById('logoImg').src = savedLogo;
+            document.getElementById('logoImg').style.display = 'block';
+            document.getElementById('logoPlaceholder').style.display = 'none';
+        }
+    }
+</script>
 </body>
 </html>
