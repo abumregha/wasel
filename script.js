@@ -770,3 +770,4 @@ function updateTexts() {
         // Add more updates...
     }
 }
+}
