@@ -1,0 +1,1 @@
+/* pdfmake vfs_fonts placeholder. Use official CDN in index.html for production. */

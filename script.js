@@ -276,7 +276,6 @@ function generateInvoiceId() {
 // Event listeners
 if (customizeCompanyBtn) customizeCompanyBtn.addEventListener('click', showCustomizeCompany);
 if (newInvoiceBtn) newInvoiceBtn.addEventListener('click', showInvoiceForm);
-if (exportImportBtn) exportImportBtn.addEventListener('click', showExportImport);
 
 // Save company
 function saveCompany() {
@@ -481,46 +480,6 @@ function previewPDF() {
     generatePDFFromInvoice(invoice);
 }
 
-// Export/Import
-function showExportImport() {
-    mainContent.innerHTML = `
-        <div class="invoice-form">
-            <h2>تصدير/استيراد</h2>
-            <div class="form-group">
-                <button id="export-json">تصدير JSON</button>
-                <input type="file" id="import-json" accept=".json" style="display:none;">
-                <button id="import-btn">استيراد JSON</button>
-            </div>
-            <div class="form-group">
-                <button id="export-pdf">تصدير آخر فاتورة PDF</button>
-                <button id="print-invoice">طباعة آخر فاتورة</button>
-                <button id="copy-text">نسخ نص آخر فاتورة</button>
-            </div>
-        </div>
-    `;
-    document.getElementById('export-json').addEventListener('click', exportJSON);
-    document.getElementById('import-btn').addEventListener('click', () => {
-        document.getElementById('import-json').click();
-    });
-    document.getElementById('import-json').addEventListener('change', importJSON);
-    document.getElementById('export-pdf').addEventListener('click', exportLastPDF);
-    document.getElementById('print-invoice').addEventListener('click', printLastInvoice);
-    document.getElementById('copy-text').addEventListener('click', copyLastText);
-}
-
-// Export last invoice as PDF
-function exportLastPDF() {
-    if (invoices.length === 0) return alert('لا توجد فواتير');
-    const invoice = invoices[invoices.length - 1];
-    generatePDFFromInvoice(invoice);
-}
-
-// Print last invoice
-function printLastInvoice() {
-    if (invoices.length === 0) return alert('لا توجد فواتير');
-    window.print();
-}
-
 // Export last invoice as PDF
 function exportLastPDF() {
     if (invoices.length === 0) return alert('لا توجد فواتير');
@@ -545,38 +504,74 @@ function copyLastText() {
 
 // Generate PDF from saved invoice
 function generatePDFFromInvoice(invoice) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    doc.setFont('Noto Sans Arabic');
-    doc.setFontSize(20);
-    doc.text(invoice.companyName || 'شركة المدار', 20, 30);
-    
-    if (invoice.companyLogo) {
-        doc.addImage(invoice.companyLogo, 'PNG', 150, 10, 40, 40);
-    }
-    
-    doc.setFontSize(14);
-    doc.text(`نوع الفاتورة: ${invoice.type}`, 20, 50);
-    doc.text(`رقم الفاتورة: ${invoice.id}`, 20, 60);
-    doc.text(`التاريخ: ${new Date(invoice.date).toLocaleDateString('ar')}`, 20, 70);
-    doc.text(`العميل: ${invoice.client.name}`, 20, 80);
-    doc.text(`الهاتف: ${invoice.client.phone}`, 20, 90);
-    doc.text(`العنوان: ${invoice.client.address}`, 20, 100);
-    doc.text(`البريد: ${invoice.client.email}`, 20, 110);
-    
-    doc.text('العناصر:', 20, 130);
-    let y = 140;
+    // إعداد جدول العناصر
+    const itemsTable = [
+        [
+            { text: 'اسم العنصر', style: 'tableHeader' },
+            { text: 'السعر', style: 'tableHeader' },
+            { text: 'الكمية', style: 'tableHeader' },
+            { text: 'الإجمالي', style: 'tableHeader' }
+        ]
+    ];
     invoice.items.forEach(item => {
-        doc.text(`${item.desc} - السعر: ${item.price} - الكمية: ${item.qty} - الإجمالي: ${item.total}`, 20, y);
-        y += 10;
+        itemsTable.push([
+            item.desc,
+            item.price.toString(),
+            item.qty.toString(),
+            item.total.toString()
+        ]);
     });
-    
-    doc.text(`الإجمالي الكلي: ${invoice.grandTotal}`, 20, y + 10);
-    doc.text(`المدفوع: ${invoice.paid}`, 20, y + 20);
-    doc.text(`المتبقي: ${invoice.remaining}`, 20, y + 30);
-    
-    doc.save(`invoice-${invoice.id}.pdf`);
+
+    var docDefinition = {
+        content: [
+            { text: invoice.companyName || 'شركة المدار', style: 'header', alignment: 'center', color: '#007bff' },
+            { text: `نوع الفاتورة: ${invoice.type}`, style: 'subheader', alignment: 'right' },
+            { text: `رقم الفاتورة: ${invoice.id}`, style: 'subheader', alignment: 'right' },
+            { text: `التاريخ: ${new Date(invoice.date).toLocaleDateString('ar')}`, style: 'subheader', alignment: 'right' },
+            { text: `العميل: ${invoice.client.name}`, style: 'subheader', alignment: 'right' },
+            { text: `الهاتف: ${invoice.client.phone}`, style: 'subheader', alignment: 'right' },
+            { text: `العنوان: ${invoice.client.address}`, style: 'subheader', alignment: 'right' },
+            { text: `البريد: ${invoice.client.email}`, style: 'subheader', alignment: 'right' },
+            { text: 'العناصر:', style: 'subheader', alignment: 'right', margin: [0, 10, 0, 0] },
+            {
+                table: {
+                    headerRows: 1,
+                    widths: ['*', 'auto', 'auto', 'auto'],
+                    body: itemsTable
+                },
+                layout: 'lightHorizontalLines',
+                alignment: 'center',
+                margin: [0, 5, 0, 5]
+            },
+            { text: `الإجمالي الكلي: ${invoice.grandTotal}`, style: 'subheader', alignment: 'right', margin: [0, 10, 0, 0] },
+            { text: `المدفوع: ${invoice.paid}`, style: 'subheader', alignment: 'right' },
+            { text: `المتبقي: ${invoice.remaining}`, style: 'subheader', alignment: 'right' }
+        ],
+        defaultStyle: {
+            font: 'Arial',
+            alignment: 'right',
+            fontSize: 14
+        },
+        styles: {
+            header: {
+                fontSize: 22,
+                bold: true
+            },
+            subheader: {
+                fontSize: 16,
+                bold: false
+            },
+            tableHeader: {
+                bold: true,
+                fontSize: 15,
+                color: 'white',
+                fillColor: '#007bff',
+                alignment: 'center'
+            }
+        },
+        pageDirection: 'rtl'
+    };
+    pdfMake.createPdf(docDefinition).open();
 }
 
 // Register Service Worker
